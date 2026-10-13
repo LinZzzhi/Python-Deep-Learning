@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SimpleChat · 线上聊天室</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ==================== 大厅 ==================== -->
+<div id="lobby" class="page">
+  <header class="topbar">
+    <div class="brand">
+      <h1>线上聊天室</h1>
+      <p>浏览、搜索聊天室，或凭密码直接加入</p>
+    </div>
+    <label class="nick">
+      <span>你的昵称</span>
+      <input id="nickname" maxlength="16" placeholder="临时昵称" autocomplete="off">
+    </label>
+  </header>
+
+  <main class="lobby-grid">
+    <section class="card">
+      <div class="card-head">
+        <h2>在线聊天室</h2>
+        <span class="badge" id="room-total">0 个</span>
+      </div>
+      <input id="search" class="search" placeholder="搜索聊天室名称…" autocomplete="off">
+      <ul id="room-list" class="room-list"></ul>
+      <p id="room-empty" class="empty">还没有人在线，创建一个聊天室吧</p>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <h2>创建聊天室</h2>
+        <input id="new-room" maxlength="20" placeholder="聊天室名称" autocomplete="off">
+        <label class="check">
+          <input type="checkbox" id="use-password" checked>
+          <span>自动生成 6 位数字进房密码</span>
+        </label>
+        <button id="create-btn" class="primary">创建并进入</button>
+        <p class="hint">不勾选则任何人可直接加入。每个聊天室最多 10 人，创建者拥有管理权限。</p>
+      </section>
+
+      <section class="card">
+        <h2>凭密码加入</h2>
+        <input id="join-password" class="code" maxlength="6" inputmode="numeric"
+               placeholder="6 位数字密码" autocomplete="off">
+        <button id="join-btn">加入</button>
+        <p class="hint">向聊天室创建者索取进房密码，输入后可直接进入。</p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<!-- ==================== 聊天室 ==================== -->
+<div id="room" class="page hidden">
+  <header class="topbar">
+    <div class="brand">
+      <h1 id="room-title">聊天室</h1>
+      <p><span id="room-count">0</span> / 10 人在线</p>
+    </div>
+    <div class="room-actions">
+      <span id="room-password" class="chip hidden"></span>
+      <button id="dissolve-btn" class="danger hidden">解散聊天室</button>
+      <button id="leave-btn">离开</button>
+    </div>
+  </header>
+
+  <div id="ghost-banner" class="ghost-banner hidden">
+    无痕模式：其他成员看不到你在线，也不会收到任何加入提示；你在这里拥有房主权限。
+  </div>
+
+  <main class="room-grid">
+    <section class="card chat">
+      <ul id="messages" class="messages"></ul>
+      <form id="send-form" class="composer" autocomplete="off">
+        <input id="message-input" maxlength="500" placeholder="说点什么…" autocomplete="off">
+        <button class="primary" type="submit">发送</button>
+      </form>
+    </section>
+
+    <aside class="card members">
+      <h2>在线成员 <span class="badge" id="member-count">0</span></h2>
+      <ul id="member-list"></ul>
+      <p class="hint owner-tip hidden" id="owner-tip">你是创建者，可以把成员移出聊天室。</p>
+      <p class="hint admin-tip hidden" id="admin-view-tip">管理员视角：成员 IP 仅你可见。</p>
+    </aside>
+  </main>
+</div>
+
+<!-- ==================== 管理员 ==================== -->
+<div id="admin" class="page hidden">
+  <header class="topbar">
+    <div class="brand">
+      <h1>管理员控制台</h1>
+      <p>当前账号 <span id="admin-user">admin</span> · 可无痕加入任意房间并拥有房主权限</p>
+    </div>
+    <div class="room-actions">
+      <button id="admin-refresh">刷新数据</button>
+      <button id="admin-lobby">返回大厅</button>
+      <button id="admin-logout" class="danger">退出管理员</button>
+    </div>
+  </header>
+
+  <main class="admin-grid">
+    <section class="card">
+      <h2>管理员账号</h2>
+      <label class="field">
+        <span>用户名</span>
+        <input id="admin-name" maxlength="16" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <span class="pwd-row">
+          <input id="admin-pass" type="password" maxlength="64" autocomplete="off">
+          <button id="admin-eye" type="button" class="mini">显示</button>
+        </span>
+      </label>
+      <button id="admin-save" class="primary">保存修改</button>
+      <p class="hint">默认密码 12345678。点「显示」可查看明文，再点变回隐藏。</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>总览</h2>
+        <span class="badge" id="admin-stats">—</span>
+      </div>
+      <p class="hint no-margin">所有出现过的用户名及其 IP：</p>
+      <ul id="admin-userlist" class="flat"></ul>
+    </section>
+  </main>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>全部聊天室（含已结束）</h2>
+      <span class="badge" id="admin-room-count">0</span>
+    </div>
+    <div id="admin-rooms" class="admin-rooms"></div>
+  </section>
+</div>
+
+<!-- ==================== 密码弹窗 ==================== -->
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <h3 id="modal-title">输入密码</h3>
+    <p id="modal-desc" class="hint"></p>
+    <input id="modal-input" class="code" maxlength="6" inputmode="numeric" autocomplete="off">
+    <div class="modal-actions">
+      <button id="modal-cancel">取消</button>
+      <button id="modal-ok" class="primary">加入</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

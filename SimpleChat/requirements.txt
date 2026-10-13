@@ -1,0 +1,1 @@
+# SimpleChat 只使用 Python 标准库（http.server），没有第三方依赖
