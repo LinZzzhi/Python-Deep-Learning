@@ -66,7 +66,7 @@ PORT=3000 python server.py
 启动后浏览器打开 `http://127.0.0.1:8000` 即可。同一局域网内其他设备访问
 `http://<本机 IP>:8000` 也能使用。
 
-同时项目已部署到公网，可直接使用浏览器访问：`https://simple-chat-room.app.workbuddy.host/`
+同时项目已部署到公网，可直接使用浏览器访问。
 
 ### 配置项
 
