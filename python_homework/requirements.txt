@@ -1,0 +1,5 @@
+numpy>=1.26,<3
+torch>=2.6,<3
+matplotlib>=3.8,<4
+h5py>=3.10,<4
+Flask>=3.0,<4

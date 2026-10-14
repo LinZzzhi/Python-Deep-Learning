@@ -1,0 +1,1553 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101613">
+  <title>NeuroSnake · 强化学习实验场</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b100e;
+      --panel: #121916;
+      --panel-2: #18211d;
+      --line: #29362f;
+      --line-strong: #3a4b42;
+      --text: #eef5f0;
+      --muted: #96a69d;
+      --green: #79e080;
+      --green-deep: #2d9e58;
+      --red: #ff6b5f;
+      --amber: #f6c65b;
+      --blue: #64b5f6;
+      --violet: #b39dfa;
+      --radius: 8px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .34);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; max-width: 100%; overflow-x: hidden; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
+    }
+
+    .app {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      min-height: 68px;
+      padding: 12px clamp(16px, 3vw, 36px);
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 14, .94);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: max-content;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 3px;
+      transform: rotate(-7deg);
+    }
+
+    .brand-mark i { background: var(--green); border-radius: 2px; }
+    .brand-mark i:nth-child(1) { grid-column: 1; grid-row: 2; opacity: .55; }
+    .brand-mark i:nth-child(2) { grid-column: 2; grid-row: 2; opacity: .75; }
+    .brand-mark i:nth-child(3) { grid-column: 2; grid-row: 1; }
+    .brand-mark i:nth-child(4) { grid-column: 3; grid-row: 1; }
+    .brand-mark i:nth-child(5) {
+      grid-column: 3;
+      grid-row: 2;
+      background: var(--red);
+      transform: scale(.55);
+      border-radius: 50%;
+    }
+
+    .brand-copy strong { display: block; font-size: 16px; line-height: 1.1; }
+    .brand-subtitle { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+    .modes {
+      display: flex;
+      gap: 3px;
+      padding: 4px;
+      margin: 0 auto;
+      background: #080c0a;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .mode-btn {
+      min-height: 34px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .mode-btn:hover { color: var(--text); background: var(--panel); }
+    .mode-btn.active { color: #0b150e; background: var(--green); }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 104px;
+      justify-content: flex-end;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: #68736d;
+      box-shadow: 0 0 0 4px rgba(104, 115, 109, .12);
+    }
+
+    .connection[data-state="live"] .connection-dot {
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(121, 224, 128, .12);
+    }
+
+    .connection[data-state="error"] .connection-dot {
+      background: var(--red);
+      box-shadow: 0 0 0 4px rgba(255, 107, 95, .12);
+    }
+
+    .workspace {
+      width: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: clamp(18px, 3vw, 36px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      align-items: start;
+      gap: clamp(20px, 3vw, 38px);
+    }
+
+    .stage { min-width: 0; }
+
+    .stage-head {
+      min-height: 50px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--green);
+      font-size: 11px;
+      line-height: 1;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .stage-note {
+      max-width: 450px;
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .quick-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: var(--panel);
+      cursor: pointer;
+      font-size: 19px;
+    }
+
+    .icon-btn:hover { border-color: var(--green); background: var(--panel-2); }
+
+    .game-shell {
+      width: min(100%, calc(100vh - 210px));
+      min-width: 360px;
+      max-width: 800px;
+      aspect-ratio: 1;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: #0e1512;
+      box-shadow: var(--shadow);
+    }
+
+    #gameCanvas, #trainCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .board-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(6, 10, 8, .72);
+      backdrop-filter: blur(5px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+    }
+
+    .board-overlay.show { opacity: 1; pointer-events: auto; }
+
+    .overlay-content { max-width: 340px; text-align: center; }
+    .overlay-kicker { margin: 0 0 8px; color: var(--green); font-size: 12px; font-weight: 800; }
+    .overlay-title { margin: 0; font-size: clamp(26px, 5vw, 46px); line-height: 1.1; }
+    .overlay-copy { margin: 12px 0 20px; color: #b5c1ba; font-size: 14px; line-height: 1.6; }
+
+    .primary-btn, .secondary-btn {
+      min-height: 42px;
+      padding: 0 17px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-weight: 750;
+      font-size: 13px;
+    }
+
+    .primary-btn { background: var(--green); color: #09100b; }
+    .primary-btn:hover { background: #91eb96; }
+    .primary-btn:disabled { cursor: not-allowed; opacity: .45; }
+    .secondary-btn { background: transparent; border-color: var(--line-strong); color: var(--text); }
+    .secondary-btn:hover { border-color: var(--muted); background: var(--panel-2); }
+
+    .training-shell {
+      width: min(100%, 920px);
+      min-height: 500px;
+      display: none;
+      grid-template-rows: auto 1fr;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: #0e1512;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .training-shell.active { display: grid; }
+    .training-shell canvas { min-height: 410px; }
+
+    .chart-legend {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+    .legend-line { width: 16px; height: 2px; background: var(--green); }
+    .legend-line.loss { background: var(--amber); }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .panel {
+      border-top: 1px solid var(--line-strong);
+      padding-top: 16px;
+    }
+
+    .panel:first-child { border-top: 0; padding-top: 0; }
+
+    .panel-title {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      border: 1px solid var(--line);
+      background: var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .metric {
+      min-height: 88px;
+      padding: 13px;
+      background: var(--panel);
+    }
+
+    .metric-label { display: block; color: var(--muted); font-size: 11px; }
+    .metric-value {
+      display: block;
+      margin-top: 8px;
+      font-size: 25px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      font-weight: 780;
+    }
+
+    .metric-value.small { font-size: 16px; line-height: 1.25; }
+
+    .control-row {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: #d7e0da;
+      font-size: 13px;
+    }
+
+    .control-label small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+
+    .switch { position: relative; width: 42px; height: 24px; flex: 0 0 auto; }
+    .switch input { width: 1px; height: 1px; opacity: 0; position: absolute; }
+    .switch-track {
+      position: absolute;
+      inset: 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      background: #0b100e;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .switch-track::after {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: 3px;
+      left: 3px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: .2s ease;
+    }
+
+    .switch input:checked + .switch-track { background: rgba(121, 224, 128, .16); border-color: var(--green-deep); }
+    .switch input:checked + .switch-track::after { left: 21px; background: var(--green); }
+    .switch input:focus-visible + .switch-track { outline: 2px solid var(--green); outline-offset: 2px; }
+
+    .range-wrap { width: 100%; }
+    .range-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+    .range-value { color: var(--green); font-variant-numeric: tabular-nums; font-weight: 750; }
+    input[type="range"] { width: 100%; height: 4px; accent-color: var(--green); cursor: pointer; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+    .field input {
+      width: 100%;
+      height: 40px;
+      padding: 0 11px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: #0a0f0d;
+      color: var(--text);
+    }
+
+    .compact-number {
+      width: 112px;
+      height: 36px;
+      padding: 0 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: #0a0f0d;
+      color: var(--text);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .button-row { display: flex; gap: 8px; margin-top: 12px; }
+    .button-row > * { flex: 1; }
+
+    .status-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .status-icon {
+      width: 21px;
+      height: 21px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .key-grid {
+      width: 146px;
+      margin: 3px auto 0;
+      display: grid;
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(2, 46px);
+      gap: 4px;
+    }
+
+    .key-btn {
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 17px;
+      cursor: pointer;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .key-btn:hover, .key-btn.pressed { border-color: var(--green); background: rgba(121, 224, 128, .11); }
+    .key-up { grid-column: 2; }
+    .key-left { grid-column: 1; grid-row: 2; }
+    .key-down { grid-column: 2; grid-row: 2; }
+    .key-right { grid-column: 3; grid-row: 2; }
+
+    .control-block { margin-top: 12px; }
+    .control-block > .control-label { display: block; margin-bottom: 8px; color: #d7e0da; font-size: 13px; }
+    .control-hint { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+    .segmented {
+      display: grid;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
+      gap: 3px;
+      padding: 3px;
+      background: #080c0a;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .seg-btn {
+      min-height: 32px;
+      padding: 0 6px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .seg-btn:hover { color: var(--text); background: var(--panel); }
+    .seg-btn.active { color: #0b150e; background: var(--green); }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 26px;
+      padding: 0 11px;
+      border: 1px solid rgba(100, 181, 246, .38);
+      border-radius: 999px;
+      background: rgba(100, 181, 246, .1);
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .phase-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .phase-badge[data-tone="amber"] { color: var(--amber); background: rgba(246, 198, 91, .1); border-color: rgba(246, 198, 91, .38); }
+    .phase-badge[data-tone="red"] { color: var(--red); background: rgba(255, 107, 95, .1); border-color: rgba(255, 107, 95, .4); }
+    .phase-badge[data-tone="green"] { color: var(--green); background: rgba(121, 224, 128, .1); border-color: rgba(121, 224, 128, .36); }
+    .phase-badge[data-tone="violet"] { color: var(--violet); background: rgba(179, 157, 250, .1); border-color: rgba(179, 157, 250, .38); }
+    .phase-badge[data-tone="muted"] { color: var(--muted); background: transparent; border-color: var(--line-strong); }
+
+    .phase-copy { min-height: 38px; margin: 9px 0 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+    .q-bars { display: grid; gap: 7px; }
+    .q-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) 44px; align-items: center; gap: 9px; font-size: 12px; }
+    .q-arrow { color: var(--muted); font-weight: 800; text-align: center; }
+    .q-track { height: 10px; overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: #0a0f0d; }
+    .q-fill { display: block; width: 0; height: 100%; background: var(--line-strong); transition: width .15s ease; }
+    .q-value { color: #d7e0da; font-variant-numeric: tabular-nums; text-align: right; }
+    .q-row.candidate .q-fill { background: rgba(100, 181, 246, .7); }
+    .q-row.chosen .q-fill { background: var(--green); }
+    .q-row.chosen .q-arrow { color: var(--green); }
+    .q-row.blocked { opacity: .42; }
+    .q-row.blocked .q-fill {
+      background: repeating-linear-gradient(135deg, var(--line-strong) 0 4px, transparent 4px 7px);
+    }
+
+    .q-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 11px; color: var(--muted); font-size: 10px; }
+    .q-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .q-legend i { width: 9px; height: 9px; border-radius: 2px; }
+    .brain-empty { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+    .game-shell.duel {
+      width: min(100%, calc((100vh - 210px) * 1.82));
+      max-width: 1060px;
+      aspect-ratio: 2 / 1.1;
+    }
+
+    .mobile-stats { display: none; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 980px) {
+      .topbar { flex-wrap: wrap; gap: 10px 16px; }
+      .modes { order: 3; width: 100%; overflow-x: auto; justify-content: stretch; }
+      .mode-btn { flex: 1; }
+      .workspace { grid-template-columns: minmax(0, 1fr) 270px; }
+      .game-shell { width: 100%; min-width: 0; }
+    }
+
+    @media (max-width: 760px) {
+      .topbar { position: static; padding: 10px 14px; }
+      .brand-subtitle { display: none; }
+      .connection { margin-left: auto; }
+      .modes { margin: 0; }
+      .mode-btn { min-width: max-content; padding: 0 12px; }
+      .workspace { display: block; padding: 16px 14px calc(22px + env(safe-area-inset-bottom)); }
+      .stage-head { min-height: auto; margin-bottom: 12px; }
+      .stage-note { display: none; }
+      .quick-actions { display: none; }
+      .game-shell { max-width: none; }
+      .game-shell.duel { width: 100%; aspect-ratio: 1 / 2.1; }
+      .mobile-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+        background: var(--line);
+      }
+      .mobile-stat { padding: 8px; text-align: center; background: var(--panel); }
+      .mobile-stat span { display: block; color: var(--muted); font-size: 9px; }
+      .mobile-stat strong { display: block; margin-top: 3px; font-size: 15px; font-variant-numeric: tabular-nums; }
+      .sidebar { margin-top: 18px; }
+      .sidebar .stats-panel { display: none; }
+      .panel { padding-top: 14px; }
+      .training-shell { min-height: 390px; }
+      .training-shell canvas { min-height: 330px; }
+      h1 { font-size: 22px; }
+    }
+
+    @media (max-width: 420px) {
+      .connection span { display: none; }
+      .connection { min-width: auto; }
+      .brand strong { font-size: 14px; }
+      .game-shell { border-radius: 5px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand" aria-label="NeuroSnake 强化学习实验场">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <div class="brand-copy"><strong>NeuroSnake</strong><span class="brand-subtitle">强化学习实验场</span></div>
+      </div>
+
+      <nav class="modes" aria-label="运行模式">
+        <button class="mode-btn active" data-mode="play">AI 演示</button>
+        <button class="mode-btn" data-mode="manual">手动挑战</button>
+        <button class="mode-btn" data-mode="duel">人机对决</button>
+        <button class="mode-btn" data-mode="perfect">完美策略</button>
+        <button class="mode-btn" data-mode="train">模型训练</button>
+      </nav>
+
+      <div class="connection" id="connection" data-state="waiting" aria-live="polite">
+        <i class="connection-dot" aria-hidden="true"></i>
+        <span id="connectionText">正在连接</span>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="stage">
+        <div class="stage-head">
+          <div>
+            <p class="eyebrow" id="modeEyebrow">DQN AGENT · ONLINE</p>
+            <h1 id="modeTitle">观察智能体决策</h1>
+            <p class="stage-note" id="modeNote">预判规划器先让虚拟蛇把路线试走一遍，DQN 再在同样安全的最短路线中拍板。</p>
+          </div>
+          <div class="quick-actions" id="quickActions">
+            <button class="icon-btn" id="restartIcon" title="重新开始" aria-label="重新开始">↻</button>
+          </div>
+        </div>
+
+        <div class="game-shell" id="gameShell">
+          <canvas id="gameCanvas" aria-label="贪吃蛇实时棋盘"></canvas>
+          <div class="board-overlay" id="boardOverlay">
+            <div class="overlay-content">
+              <p class="overlay-kicker" id="overlayKicker">本局结束</p>
+              <h2 class="overlay-title" id="overlayTitle">再来一局？</h2>
+              <p class="overlay-copy" id="overlayCopy">智能体已完成本轮探索。</p>
+              <button class="primary-btn" id="overlayRestart">重新开始</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="training-shell" id="trainingShell">
+          <div class="chart-legend">
+            <span class="legend-item"><i class="legend-line"></i>每局得分</span>
+            <span class="legend-item"><i class="legend-line loss"></i>训练损失</span>
+          </div>
+          <canvas id="trainCanvas" aria-label="训练得分与损失曲线"></canvas>
+        </div>
+
+        <div class="mobile-stats" aria-label="当前统计">
+          <div class="mobile-stat"><span id="mobileLabel1">得分</span><strong data-bind="score">0</strong></div>
+          <div class="mobile-stat"><span id="mobileLabel2">步数</span><strong data-bind="steps">0</strong></div>
+          <div class="mobile-stat"><span id="mobileLabel3">长度</span><strong data-bind="length">3</strong></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel stats-panel">
+          <h2 class="panel-title" id="statsTitle">实时状态</h2>
+          <div class="metrics">
+            <div class="metric"><span class="metric-label" id="metricLabel1">得分</span><strong class="metric-value" data-bind="score">0</strong></div>
+            <div class="metric"><span class="metric-label" id="metricLabel2">步数</span><strong class="metric-value" data-bind="steps">0</strong></div>
+            <div class="metric"><span class="metric-label" id="metricLabel3">蛇身长度</span><strong class="metric-value" data-bind="length">3</strong></div>
+            <div class="metric"><span class="metric-label" id="metricLabel4">当前状态</span><strong class="metric-value small" data-bind="state">运行中</strong></div>
+          </div>
+        </section>
+
+        <section class="panel" id="gameControls">
+          <h2 class="panel-title">运行控制</h2>
+          <div class="range-wrap">
+            <div class="range-head"><span class="control-label">运行速度</span><span class="range-value" id="fpsValue">15 FPS</span></div>
+            <input id="fpsRange" type="range" min="1" max="60" step="1" value="15" aria-label="运行速度">
+          </div>
+          <div class="control-block" id="plannerRow">
+            <span class="control-label">规划器</span>
+            <div class="segmented" role="group" aria-label="规划器">
+              <button class="seg-btn active" data-planner="lookahead" aria-pressed="true">预判</button>
+              <button class="seg-btn" data-planner="smart" aria-pressed="false">哈密顿</button>
+              <button class="seg-btn" data-planner="off" aria-pressed="false">纯 DQN</button>
+            </div>
+            <p class="control-hint" id="plannerHint"></p>
+          </div>
+          <div class="control-block hidden" id="levelRow">
+            <span class="control-label">AI 难度</span>
+            <div class="segmented" role="group" aria-label="AI 难度">
+              <button class="seg-btn" data-level="rookie" aria-pressed="false">新手</button>
+              <button class="seg-btn" data-level="steady" aria-pressed="false">稳健</button>
+              <button class="seg-btn active" data-level="master" aria-pressed="true">大师</button>
+            </div>
+            <p class="control-hint" id="levelHint"></p>
+          </div>
+          <div class="control-row" id="insightRow">
+            <span class="control-label" id="insightLabel">思维可视化<small id="insightHint">在棋盘上画出 AI 的规划路线</small></span>
+            <label class="switch">
+              <input id="insightToggle" type="checkbox" checked aria-label="思维可视化">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="control-row" id="maxStepsRow">
+            <label class="control-label" for="maxStepsInput">最大步数<small>达到上限后自动结束本局</small></label>
+            <input class="compact-number" id="maxStepsInput" type="number" min="1" max="1000000" step="100" value="500">
+          </div>
+          <div class="button-row">
+            <button class="primary-btn" id="restartButton">重新开始</button>
+          </div>
+        </section>
+
+        <section class="panel" id="brainPanel">
+          <h2 class="panel-title" id="brainTitle">AI 思维</h2>
+          <span class="phase-badge" id="phaseBadge" data-tone="muted">等待决策</span>
+          <p class="phase-copy" id="phaseCopy">开局后，这里会实时显示智能体每一步的决策依据。</p>
+          <div id="qPanel">
+            <div class="q-bars" aria-label="DQN 对四个方向的 Q 值">
+              <div class="q-row" data-action="0"><span class="q-arrow">↑</span><span class="q-track"><i class="q-fill"></i></span><span class="q-value">—</span></div>
+              <div class="q-row" data-action="1"><span class="q-arrow">↓</span><span class="q-track"><i class="q-fill"></i></span><span class="q-value">—</span></div>
+              <div class="q-row" data-action="2"><span class="q-arrow">←</span><span class="q-track"><i class="q-fill"></i></span><span class="q-value">—</span></div>
+              <div class="q-row" data-action="3"><span class="q-arrow">→</span><span class="q-track"><i class="q-fill"></i></span><span class="q-value">—</span></div>
+            </div>
+            <div class="q-legend">
+              <span><i style="background: var(--green)"></i><span id="legendChosen">选中</span></span>
+              <span><i style="background: rgba(100, 181, 246, .7)"></i>同样安全的候选</span>
+              <span><i style="background: var(--line-strong)"></i>被规划否决</span>
+            </div>
+          </div>
+          <p class="brain-empty hidden" id="brainEmpty">纯规划策略：不经过神经网络，直接沿哈密顿环推进。</p>
+        </section>
+
+        <section class="panel hidden" id="manualControls">
+          <h2 class="panel-title">方向控制</h2>
+          <div class="key-grid">
+            <button class="key-btn key-up" data-dir="up" aria-label="向上">↑</button>
+            <button class="key-btn key-left" data-dir="left" aria-label="向左">←</button>
+            <button class="key-btn key-down" data-dir="down" aria-label="向下">↓</button>
+            <button class="key-btn key-right" data-dir="right" aria-label="向右">→</button>
+          </div>
+        </section>
+
+        <section class="panel hidden" id="trainControls">
+          <h2 class="panel-title">训练配置</h2>
+          <div class="form-grid">
+            <div class="field"><label for="episodesInput">训练轮次</label><input id="episodesInput" type="number" min="1" max="10000" value="200"></div>
+            <div class="field"><label for="seedInput">随机种子</label><input id="seedInput" type="number" min="0" value="42"></div>
+          </div>
+          <div class="button-row">
+            <button class="primary-btn" id="startTrain">开始训练</button>
+            <button class="secondary-btn" id="stopTrain" disabled>停止</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">模型信息</h2>
+          <div class="status-line">
+            <span class="status-icon" id="modelIcon">✓</span>
+            <span id="modelStatus">正在检查模型文件…</span>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const $ = (selector) => document.querySelector(selector);
+      const $$ = (selector) => [...document.querySelectorAll(selector)];
+      const gameCanvas = $("#gameCanvas");
+      const gameCtx = gameCanvas.getContext("2d");
+      const trainCanvas = $("#trainCanvas");
+      const trainCtx = trainCanvas.getContext("2d");
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const ARROWS = ["↑", "↓", "←", "→"];
+      const MOVES = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+
+      const modeCopy = {
+        play: {
+          eyebrow: "DQN AGENT · ONLINE",
+          title: "观察智能体决策",
+          note: "预判规划器先让虚拟蛇把路线试走一遍，DQN 再在同样安全的最短路线中拍板。"
+        },
+        manual: {
+          eyebrow: "MANUAL CONTROL · LIVE",
+          title: "接管这条蛇",
+          note: "使用方向键或 WASD 改变方向；打开 AI 教练，它会画出推荐路线并在你即将自困时报警。"
+        },
+        duel: {
+          eyebrow: "HUMAN VS AI · DUEL",
+          title: "和 AI 比一比",
+          note: "同一初始局面、同一食物序列，步数用完时得分高者获胜。用方向键或 WASD 操作左侧的蛇。"
+        },
+        perfect: {
+          eyebrow: "HAMILTONIAN CYCLE · ACTIVE",
+          title: "观看完美策略铺满棋盘",
+          note: "智能体沿哈密顿环规划路径，在不设步数上限时保证覆盖全部 400 格。"
+        },
+        train: {
+          eyebrow: "TRAINING LAB · READY",
+          title: "训练一个新的智能体",
+          note: "实时追踪每轮得分与训练损失，完成后模型会自动用于下一次 AI 演示。"
+        }
+      };
+
+      const reasonCopy = {
+        win: ["任务完成", "铺满棋盘", "智能体已经覆盖全部 400 个网格。"],
+        wall: ["本局结束", "撞到边界", "路径越过了棋盘边界，可以重新开始观察下一局。"],
+        self: ["本局结束", "发生碰撞", "蛇头与身体相撞，可以重新开始尝试新的路径。"],
+        timeout: ["达到上限", "本轮超时", "演示已达到最大步数，重新开始即可进入下一轮。"],
+        trapped: ["无安全动作", "路径被封锁", "安全约束层没有找到可继续执行的动作。"],
+        full_board: ["棋盘已满", "探索结束", "所有网格都已被覆盖。"]
+      };
+
+      const plannerHints = {
+        lookahead: "虚拟蛇预演 + 追尾周旋，蛇长 250 后锁进动态哈密顿环。又快又稳。",
+        smart: "沿固定哈密顿环前进并抄安全捷径，永不碰撞，但绕路较多。",
+        off: "关闭规划，只保留单步危险掩码，可以看到 DQN 的原始水平。"
+      };
+
+      const levelCopy = {
+        rookie: ["新手", "纯 DQN：反应快但目光短浅，偶尔会把自己困死。"],
+        steady: ["稳健", "哈密顿捷径：永不碰撞，但常常绕远路。"],
+        master: ["大师", "预判规划：虚拟蛇试走后再出发，又快又稳。"]
+      };
+
+      const phaseInfo = {
+        sprint: ["预判冲刺", "blue", "虚拟蛇已沿最短路线试走：吃到食物后仍能回到蛇尾，放心冲刺。"],
+        stall: ["追尾周旋", "amber", "直接去吃会把自己困住，先沿蛇尾兜圈，等身体让出空间。"],
+        locked: ["哈密顿锁定", "violet", "蛇身已嵌入一条动态哈密顿环：沿环抄近路，必定铺满棋盘。"],
+        cycle: ["环形捷径", "violet", "沿固定哈密顿环前进，只在不打乱蛇身顺序时抄近路。"],
+        reflex: ["直觉反应", "green", "规划已关闭：DQN 只依据 10 维状态和单步危险掩码做决定。"],
+        escape: ["空间求生", "red", "找不到能回到蛇尾的方向，选择剩余空间最大的一侧。"],
+        trapped: ["无路可走", "red", "规划器找不到任何安全动作。"],
+        coach: ["教练建议", "blue", "虚线是 AI 推荐的安全路线；当前方向危险时棋盘会亮起红色警告。"],
+        danger: ["危险预警", "red", "按当前方向走，蛇头将回不到蛇尾——很可能把自己困死！"]
+      };
+
+      const toneColor = {
+        blue: "100, 181, 246",
+        amber: "246, 198, 91",
+        violet: "179, 157, 250",
+        green: "121, 224, 128",
+        red: "255, 107, 95"
+      };
+
+      let mode = "play";
+      let planner = "lookahead";
+      let level = "master";
+      let socket = null;
+      let socketGeneration = 0;
+      let lastFrame = { snake: [[10, 10], [9, 10], [8, 10]], food: [14, 7], score: 0, steps: 0, alive: true, won: false };
+      let lastDuel = null;
+      let training = false;
+      let trainingData = [];
+      let resizeTimer = null;
+      let effects = [];
+      let prevScores = {};
+      let animating = false;
+
+      const showInsight = () => $("#insightToggle").checked;
+      const finished = (frame) => !frame.alive || frame.won;
+
+      function setConnection(state, label) {
+        $("#connection").dataset.state = state;
+        $("#connectionText").textContent = label;
+      }
+
+      function setBound(name, value) {
+        $$(`[data-bind="${name}"]`).forEach((node) => { node.textContent = value; });
+      }
+
+      function updateFrameStats(frame) {
+        setBound("score", frame.score ?? 0);
+        setBound("steps", frame.steps ?? 0);
+        setBound("length", frame.snake?.length ?? 3);
+        setBound("state", frame.won ? "已完成" : frame.alive ? "运行中" : "已结束");
+      }
+
+      function updateDuelStats(message) {
+        const { human, ai } = message;
+        setBound("score", human.score);
+        setBound("steps", ai.score);
+        setBound("length", Math.max(0, message.max_steps - Math.max(human.steps, ai.steps)));
+        const diff = human.score - ai.score;
+        setBound("state", diff > 0 ? `领先 ${diff}` : diff < 0 ? `落后 ${-diff}` : "平分");
+      }
+
+      function fitCanvas(canvas, ctx) {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.max(1, Math.round(rect.width * ratio));
+        const height = Math.max(1, Math.round(rect.height * ratio));
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        return { width: rect.width, height: rect.height };
+      }
+
+      function roundedRect(ctx, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        ctx.beginPath();
+        ctx.roundRect(x, y, width, height, r);
+      }
+
+      function drawPlan(ctx, frame, insight, ox, oy, cell) {
+        const head = frame.snake?.[0];
+        if (!head || !insight.plan?.length) return;
+        const [, tone] = phaseInfo[insight.warning ? "danger" : insight.phase] || phaseInfo.sprint;
+        const rgb = toneColor[tone];
+        const plan = insight.plan[0][0] === head[0] && insight.plan[0][1] === head[1] ? insight.plan.slice(1) : insight.plan;
+        if (!plan.length) return;
+        const center = ([x, y]) => [ox + (x + .5) * cell, oy + (y + .5) * cell];
+
+        ctx.save();
+        ctx.strokeStyle = `rgba(${rgb}, .78)`;
+        ctx.lineWidth = Math.max(1.5, cell * .11);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.setLineDash([cell * .26, cell * .2]);
+        ctx.beginPath();
+        [head, ...plan].forEach((point, index) => {
+          const [px, py] = center(point);
+          if (index) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const [ex, ey] = center(plan.at(-1));
+        ctx.strokeStyle = `rgba(${rgb}, .9)`;
+        ctx.beginPath();
+        ctx.arc(ex, ey, cell * .42, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawWarning(ctx, frame, insight, ox, oy, cell) {
+        const head = frame.snake?.[0];
+        if (!head || insight.heading == null) return;
+        const [dx, dy] = MOVES[insight.heading];
+        const [x, y] = [head[0] + dx, head[1] + dy];
+        const pulse = .55 + .35 * Math.sin(performance.now() / 120);
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 107, 95, ${pulse})`;
+        ctx.lineWidth = Math.max(2, cell * .12);
+        roundedRect(ctx, ox + x * cell + 1, oy + y * cell + 1, cell - 2, cell - 2, cell * .2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawEffects(ctx, key, ox, oy, cell) {
+        const now = performance.now();
+        effects.filter((effect) => effect.key === key).forEach(({ cell: [x, y], start }) => {
+          const t = Math.min(1, (now - start) / 520);
+          const cx = ox + (x + .5) * cell;
+          const cy = oy + (y + .5) * cell;
+          ctx.save();
+          ctx.globalAlpha = 1 - t;
+          ctx.strokeStyle = "#8deb91";
+          ctx.lineWidth = Math.max(1.5, cell * .1);
+          ctx.beginPath();
+          ctx.arc(cx, cy, cell * (.45 + 1.25 * t), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = "#c9f7cb";
+          ctx.font = `800 ${Math.max(10, cell * .62)}px ui-sans-serif, system-ui`;
+          ctx.textAlign = "center";
+          ctx.fillText("+1", cx, cy - cell * (.75 + .8 * t));
+          ctx.restore();
+        });
+      }
+
+      function paintBoard(ctx, frame, ox, oy, cell, options = {}) {
+        const board = cell * 20;
+        ctx.fillStyle = "#0d1411";
+        ctx.fillRect(ox, oy, board, board);
+
+        ctx.strokeStyle = "rgba(127, 153, 138, .10)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i <= 20; i += 1) {
+          const p = Math.round(i * cell) + .5;
+          ctx.moveTo(ox + p, oy);
+          ctx.lineTo(ox + p, oy + board);
+          ctx.moveTo(ox, oy + p);
+          ctx.lineTo(ox + board, oy + p);
+        }
+        ctx.stroke();
+
+        const insight = options.insight;
+        if (insight) drawPlan(ctx, frame, insight, ox, oy, cell);
+
+        if (frame.food) {
+          const [fx, fy] = frame.food;
+          const cx = ox + (fx + .5) * cell;
+          const cy = oy + (fy + .5) * cell;
+          const radius = Math.max(3, cell * .27);
+          const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, cell * .8);
+          glow.addColorStop(0, "rgba(255, 107, 95, .34)");
+          glow.addColorStop(1, "rgba(255, 107, 95, 0)");
+          ctx.fillStyle = glow;
+          ctx.fillRect(cx - cell, cy - cell, cell * 2, cell * 2);
+          ctx.fillStyle = "#ff6b5f";
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255, 255, 255, .65)";
+          ctx.beginPath();
+          ctx.arc(cx - radius * .28, cy - radius * .3, Math.max(1.2, radius * .18), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        const snake = frame.snake || [];
+        const palette = options.palette || { head: "#8deb91", body: "55, 184, 98" };
+        [...snake].reverse().forEach(([x, y], reverseIndex) => {
+          const index = snake.length - reverseIndex - 1;
+          const inset = Math.max(1.5, cell * .09);
+          const px = ox + x * cell + inset;
+          const py = oy + y * cell + inset;
+          const size = cell - inset * 2;
+          const head = index === 0;
+          const alpha = head ? 1 : .72 + .25 * (1 - index / Math.max(snake.length, 1));
+          ctx.fillStyle = head ? palette.head : `rgba(${palette.body}, ${alpha})`;
+          roundedRect(ctx, px, py, size, size, Math.max(2, cell * .22));
+          ctx.fill();
+
+          if (head && size > 12) {
+            ctx.fillStyle = "#102116";
+            const eye = Math.max(1.2, cell * .07);
+            ctx.beginPath();
+            ctx.arc(px + size * .66, py + size * .31, eye, 0, Math.PI * 2);
+            ctx.arc(px + size * .66, py + size * .69, eye, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+
+        if (insight?.warning) drawWarning(ctx, frame, insight, ox, oy, cell);
+        drawEffects(ctx, options.key, ox, oy, cell);
+        if (options.dim) {
+          ctx.fillStyle = "rgba(6, 10, 8, .55)";
+          ctx.fillRect(ox, oy, board, board);
+        }
+      }
+
+      function drawBoard(frame = lastFrame) {
+        const { width, height } = fitCanvas(gameCanvas, gameCtx);
+        const cell = Math.min(width, height) / 20;
+        gameCtx.fillStyle = "#0d1411";
+        gameCtx.fillRect(0, 0, width, height);
+        paintBoard(gameCtx, frame, (width - cell * 20) / 2, (height - cell * 20) / 2, cell, {
+          key: "solo",
+          insight: showInsight() ? frame.insight : null
+        });
+      }
+
+      function drawDuel(message) {
+        const { width, height } = fitCanvas(gameCanvas, gameCtx);
+        const gap = 14;
+        const label = 28;
+        const side = width >= height;
+        const board = side
+          ? Math.min((width - gap * 3) / 2, height - label - gap * 2)
+          : Math.min(width - gap * 2, (height - gap * 3 - label * 2) / 2);
+        const cell = board / 20;
+        const slots = side
+          ? [[(width - board * 2 - gap) / 2, (height - board - label) / 2 + label],
+             [(width + gap) / 2, (height - board - label) / 2 + label]]
+          : [[(width - board) / 2, (height - board * 2 - label * 2 - gap) / 2 + label],
+             [(width - board) / 2, (height - board * 2 - label * 2 - gap) / 2 + label * 2 + board + gap]];
+        const players = [
+          { key: "human", frame: message.human, name: "你", palette: { head: "#ffd57a", body: "222, 168, 64" } },
+          { key: "ai", frame: message.ai, name: `AI · ${levelCopy[message.level]?.[0] || "大师"}` }
+        ];
+
+        gameCtx.fillStyle = "#0e1512";
+        gameCtx.fillRect(0, 0, width, height);
+        players.forEach(({ key, frame, name, palette }, index) => {
+          const [ox, oy] = slots[index];
+          gameCtx.font = "700 13px ui-sans-serif, system-ui";
+          gameCtx.textBaseline = "alphabetic";
+          gameCtx.textAlign = "left";
+          gameCtx.fillStyle = index === 0 ? "#ffd57a" : "#8deb91";
+          gameCtx.fillText(name, ox, oy - 10);
+          gameCtx.textAlign = "right";
+          gameCtx.fillStyle = "#eef5f0";
+          const status = frame.alive || frame.won ? "" : "  · 出局";
+          gameCtx.fillText(`${frame.score} 分${status}`, ox + board, oy - 10);
+          paintBoard(gameCtx, frame, ox, oy, cell, {
+            key,
+            palette,
+            dim: finished(frame),
+            insight: key === "ai" && showInsight() ? frame.insight : null
+          });
+        });
+      }
+
+      function redraw() {
+        if (mode === "train") return;
+        if (mode === "duel") drawDuel(lastDuel || { human: lastFrame, ai: lastFrame, level, max_steps: 0 });
+        else drawBoard(lastFrame);
+      }
+
+      function animate() {
+        if (animating) return;
+        animating = true;
+        const loop = () => {
+          const now = performance.now();
+          effects = effects.filter((effect) => now - effect.start < 520);
+          redraw();
+          const warning = mode === "manual" && showInsight() && lastFrame.insight?.warning;
+          if (effects.length || warning) requestAnimationFrame(loop);
+          else animating = false;
+        };
+        requestAnimationFrame(loop);
+      }
+
+      function trackEffects(key, frame) {
+        const previous = prevScores[key];
+        prevScores[key] = frame.score;
+        if (reduceMotion || previous == null || frame.score <= previous || !frame.snake?.length) return;
+        effects.push({ key, cell: frame.snake[0], start: performance.now() });
+        animate();
+      }
+
+      function renderInsight(insight) {
+        const badge = $("#phaseBadge");
+        const rows = $$(".q-row");
+        if (!insight) {
+          badge.textContent = "等待决策";
+          badge.dataset.tone = "muted";
+          $("#phaseCopy").textContent = "开局后，这里会实时显示智能体每一步的决策依据。";
+          rows.forEach((row) => {
+            row.className = "q-row";
+            row.querySelector(".q-fill").style.width = "0";
+            row.querySelector(".q-value").textContent = "—";
+          });
+          return;
+        }
+        const key = insight.warning ? "danger" : insight.phase;
+        const [label, tone, copy] = phaseInfo[key] || phaseInfo.sprint;
+        badge.textContent = key === "coach" && insight.action != null ? `${label} ${ARROWS[insight.action]}` : label;
+        badge.dataset.tone = tone;
+        $("#phaseCopy").textContent = copy;
+
+        const q = insight.q;
+        $("#qPanel").classList.toggle("hidden", !q);
+        $("#brainEmpty").classList.toggle("hidden", Boolean(q));
+        if (!q) return;
+        const low = Math.min(...q);
+        const span = Math.max(...q) - low || 1;
+        const allowed = insight.allowed || [];
+        rows.forEach((row, action) => {
+          const ok = allowed.includes(action);
+          row.className = "q-row";
+          row.classList.add(action === insight.action ? "chosen" : ok ? "candidate" : "blocked");
+          row.querySelector(".q-fill").style.width = `${8 + 92 * (q[action] - low) / span}%`;
+          row.querySelector(".q-value").textContent = q[action].toFixed(1);
+        });
+      }
+
+      function drawTrainingChart() {
+        const { width, height } = fitCanvas(trainCanvas, trainCtx);
+        trainCtx.fillStyle = "#0d1411";
+        trainCtx.fillRect(0, 0, width, height);
+
+        const margin = { top: 30, right: 30, bottom: 42, left: 48 };
+        const chartW = Math.max(10, width - margin.left - margin.right);
+        const chartH = Math.max(10, height - margin.top - margin.bottom);
+        trainCtx.strokeStyle = "rgba(127, 153, 138, .14)";
+        trainCtx.lineWidth = 1;
+        trainCtx.fillStyle = "#7f9187";
+        trainCtx.font = "11px ui-sans-serif, system-ui";
+        trainCtx.textAlign = "right";
+
+        for (let i = 0; i <= 4; i += 1) {
+          const y = margin.top + chartH * i / 4;
+          trainCtx.beginPath();
+          trainCtx.moveTo(margin.left, y + .5);
+          trainCtx.lineTo(width - margin.right, y + .5);
+          trainCtx.stroke();
+        }
+
+        if (!trainingData.length) {
+          trainCtx.textAlign = "center";
+          trainCtx.fillStyle = "#83948a";
+          trainCtx.font = "13px ui-sans-serif, system-ui";
+          trainCtx.fillText("配置参数后开始训练", width / 2, height / 2);
+          return;
+        }
+
+        const maxScore = Math.max(5, ...trainingData.map((d) => d.score));
+        const validLoss = trainingData.map((d) => d.loss).filter(Number.isFinite);
+        const maxLoss = Math.max(1, ...validLoss);
+        const xAt = (index) => margin.left + (trainingData.length === 1 ? 0 : index / (trainingData.length - 1)) * chartW;
+        const scoreY = (value) => margin.top + chartH - value / maxScore * chartH;
+        const lossY = (value) => margin.top + chartH - Math.min(value / maxLoss, 1) * chartH;
+
+        function line(accessor, color) {
+          trainCtx.strokeStyle = color;
+          trainCtx.lineWidth = 2;
+          trainCtx.lineJoin = "round";
+          trainCtx.beginPath();
+          let started = false;
+          trainingData.forEach((datum, index) => {
+            const y = accessor(datum);
+            if (!Number.isFinite(y)) return;
+            if (!started) { trainCtx.moveTo(xAt(index), y); started = true; }
+            else trainCtx.lineTo(xAt(index), y);
+          });
+          trainCtx.stroke();
+        }
+
+        line((d) => scoreY(d.score), "#79e080");
+        line((d) => Number.isFinite(d.loss) ? lossY(d.loss) : NaN, "#f6c65b");
+
+        trainCtx.fillStyle = "#7f9187";
+        trainCtx.textAlign = "left";
+        trainCtx.fillText("0", margin.left, height - 16);
+        trainCtx.textAlign = "right";
+        trainCtx.fillText(String(trainingData.at(-1).episode), width - margin.right, height - 16);
+        trainCtx.fillText(`最高 ${maxScore}`, width - margin.right, margin.top - 10);
+      }
+
+      function showOverlay(kicker, title, copy) {
+        $("#overlayKicker").textContent = kicker;
+        $("#overlayTitle").textContent = title;
+        $("#overlayCopy").textContent = copy;
+        $("#boardOverlay").classList.add("show");
+      }
+
+      function showEndOverlay(reason, score) {
+        const copy = reasonCopy[reason] || ["本局结束", "探索结束", "当前运行已经结束，可以重新开始。"];
+        showOverlay(copy[0], copy[1], `${copy[2]} 本局得分 ${score ?? 0}。`);
+      }
+
+      function showDuelOverlay(message) {
+        const title = { human: "你赢了！", ai: "AI 获胜", draw: "平局" }[message.winner];
+        const crashed = ["wall", "self"].includes(message.human_reason) ? "你的蛇撞上了障碍。" : "";
+        const aiCrashed = ["wall", "self", "trapped"].includes(message.ai_reason) ? "AI 把自己困死了。" : "";
+        showOverlay(`对决结束 · ${levelCopy[message.level]?.[0] || "大师"} AI`, title,
+          `你 ${message.human} : ${message.ai} AI。${crashed}${aiCrashed}按空格或点击按钮再战一局。`);
+      }
+
+      function hideOverlay() {
+        $("#boardOverlay").classList.remove("show");
+      }
+
+      function closeSocket(sendStop = true) {
+        if (!socket) return;
+        if (sendStop && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "stop" }));
+        socket.onclose = null;
+        socket.close();
+        socket = null;
+      }
+
+      function socketUrl(params) {
+        const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+        return `${protocol}//${location.host}/ws?${new URLSearchParams(params)}`;
+      }
+
+      function connectGame() {
+        closeSocket();
+        const generation = ++socketGeneration;
+        hideOverlay();
+        effects = [];
+        prevScores = {};
+        lastDuel = null;
+        renderInsight(null);
+        setConnection("waiting", "正在连接");
+        setBound("state", "连接中");
+        socket = new WebSocket(socketUrl({
+          mode,
+          fps: $("#fpsRange").value,
+          planner,
+          level,
+          max_steps: $("#maxStepsInput").value
+        }));
+
+        socket.onopen = () => {
+          if (generation !== socketGeneration) return;
+          setConnection("live", "实时连接");
+          setBound("state", "运行中");
+        };
+
+        socket.onmessage = (event) => {
+          if (generation !== socketGeneration) return;
+          const message = JSON.parse(event.data);
+          if (message.type === "frame") {
+            lastFrame = message;
+            trackEffects("solo", message);
+            updateFrameStats(message);
+            renderInsight(message.insight);
+            drawBoard(message);
+            if (message.insight?.warning) animate();
+          } else if (message.type === "duel") {
+            lastDuel = message;
+            trackEffects("human", message.human);
+            trackEffects("ai", message.ai);
+            updateDuelStats(message);
+            renderInsight(message.ai.insight);
+            drawDuel(message);
+          } else if (message.type === "end") {
+            setBound("state", message.won ? "已完成" : "已结束");
+            showEndOverlay(message.reason, message.score);
+          } else if (message.type === "duel_end") {
+            setBound("state", { human: "你赢了", ai: "AI 胜", draw: "平局" }[message.winner]);
+            showDuelOverlay(message);
+          } else if (message.type === "error") {
+            setConnection("error", "连接异常");
+            setBound("state", "错误");
+            showOverlay("无法启动", "服务端错误", message.message);
+          }
+        };
+
+        socket.onerror = () => {
+          if (generation === socketGeneration) setConnection("error", "连接失败");
+        };
+
+        socket.onclose = () => {
+          if (generation === socketGeneration && mode !== "train") setConnection("error", "连接断开");
+        };
+      }
+
+      function restartGame() {
+        hideOverlay();
+        if (socket?.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "restart" }));
+          setBound("state", "运行中");
+        } else if (mode !== "train") {
+          connectGame();
+        }
+      }
+
+      function startTraining() {
+        if (training) return;
+        closeSocket();
+        const episodes = Math.max(1, Number.parseInt($("#episodesInput").value, 10) || 200);
+        const seed = Math.max(0, Number.parseInt($("#seedInput").value, 10) || 0);
+        const generation = ++socketGeneration;
+        training = true;
+        trainingData = [];
+        drawTrainingChart();
+        $("#startTrain").disabled = true;
+        $("#stopTrain").disabled = false;
+        setConnection("waiting", "启动训练");
+        setBound("score", "0");
+        setBound("steps", `0/${episodes}`);
+        setBound("length", "—");
+        setBound("state", "训练中");
+
+        socket = new WebSocket(socketUrl({ mode: "train", episodes, seed }));
+        socket.onopen = () => setConnection("live", "训练中");
+        socket.onmessage = (event) => {
+          if (generation !== socketGeneration) return;
+          const message = JSON.parse(event.data);
+          if (message.type === "train") {
+            trainingData.push({ episode: message.episode, score: message.score, loss: Number(message.loss) });
+            setBound("score", message.best);
+            setBound("steps", `${message.episode}/${episodes}`);
+            setBound("length", Number(message.eps).toFixed(3));
+            drawTrainingChart();
+          } else if (message.type === "train_end") {
+            training = false;
+            $("#startTrain").disabled = false;
+            $("#stopTrain").disabled = true;
+            setConnection("live", message.stopped ? "已停止" : "训练完成");
+            setBound("state", message.stopped ? "已停止" : "已完成");
+            checkModel();
+          } else if (message.type === "error") {
+            finishTrainingError(message.message);
+          }
+        };
+        socket.onerror = () => finishTrainingError("训练连接失败");
+      }
+
+      function finishTrainingError(message) {
+        training = false;
+        $("#startTrain").disabled = false;
+        $("#stopTrain").disabled = true;
+        setConnection("error", message || "训练失败");
+        setBound("state", "错误");
+      }
+
+      function stopTraining() {
+        if (training && socket?.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "stop" }));
+          $("#stopTrain").disabled = true;
+          setConnection("waiting", "正在停止");
+        }
+      }
+
+      function setLabels(labels) {
+        labels.metric.forEach((text, index) => { $(`#metricLabel${index + 1}`).textContent = text; });
+        labels.mobile.forEach((text, index) => { $(`#mobileLabel${index + 1}`).textContent = text; });
+      }
+
+      function updateBrainCopy() {
+        $("#brainTitle").textContent = mode === "manual" ? "AI 教练" : mode === "duel" ? "对手的思维" : "AI 思维";
+        $("#legendChosen").textContent = mode === "manual" ? "AI 推荐" : "选中";
+        $("#insightHint").textContent = mode === "manual" ? "推荐路线与自困预警"
+          : mode === "duel" ? "在右侧棋盘画出对手的规划路线" : "在棋盘上画出 AI 的规划路线";
+        $("#brainPanel").classList.toggle("hidden", mode === "train" || !showInsight());
+      }
+
+      function setMode(nextMode) {
+        if (nextMode === mode) return;
+        closeSocket();
+        socketGeneration += 1;
+        training = false;
+        mode = nextMode;
+        $$(".mode-btn").forEach((button) => button.classList.toggle("active", button.dataset.mode === mode));
+        const copy = modeCopy[mode];
+        $("#modeEyebrow").textContent = copy.eyebrow;
+        $("#modeTitle").textContent = copy.title;
+        $("#modeNote").textContent = copy.note;
+        $("#gameShell").classList.toggle("hidden", mode === "train");
+        $("#gameShell").classList.toggle("duel", mode === "duel");
+        $("#trainingShell").classList.toggle("active", mode === "train");
+        $("#gameControls").classList.toggle("hidden", mode === "train");
+        $("#trainControls").classList.toggle("hidden", mode !== "train");
+        $("#manualControls").classList.toggle("hidden", mode !== "manual" && mode !== "duel");
+        $("#plannerRow").classList.toggle("hidden", mode !== "play");
+        $("#levelRow").classList.toggle("hidden", mode !== "duel");
+        $("#maxStepsRow").classList.toggle("hidden", mode !== "play" && mode !== "duel");
+        $("#quickActions").classList.toggle("hidden", mode === "train");
+        $("#statsTitle").textContent = mode === "train" ? "训练进度" : mode === "duel" ? "对决比分" : "实时状态";
+        if (mode === "train") {
+          setLabels({ metric: ["最高得分", "训练轮次", "探索率 ε", "当前状态"], mobile: ["最高得分", "训练轮次", "探索率 ε"] });
+        } else if (mode === "duel") {
+          setLabels({ metric: ["你的得分", "AI 得分", "剩余步数", "局势"], mobile: ["你", "AI", "剩余步数"] });
+        } else {
+          setLabels({ metric: ["得分", "步数", "蛇身长度", "当前状态"], mobile: ["得分", "步数", "长度"] });
+        }
+        updateBrainCopy();
+        hideOverlay();
+
+        if (mode === "train") {
+          setConnection("waiting", "等待训练");
+          setBound("score", "0");
+          setBound("steps", "0/200");
+          setBound("length", "—");
+          setBound("state", "就绪");
+          requestAnimationFrame(drawTrainingChart);
+        } else {
+          updateFrameStats(lastFrame);
+          requestAnimationFrame(redraw);
+          connectGame();
+        }
+      }
+
+      function sendDirection(direction) {
+        if (mode !== "manual" && mode !== "duel") return;
+        if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "key", dir: direction }));
+        const button = $(`[data-dir="${direction}"]`);
+        button?.classList.add("pressed");
+        window.setTimeout(() => button?.classList.remove("pressed"), 120);
+      }
+
+      function bindSegmented(attribute, onChange) {
+        const buttons = $$(`[data-${attribute}]`);
+        buttons.forEach((button) => button.addEventListener("click", () => {
+          buttons.forEach((other) => {
+            other.classList.toggle("active", other === button);
+            other.setAttribute("aria-pressed", String(other === button));
+          });
+          onChange(button.dataset[attribute]);
+        }));
+      }
+
+      async function checkModel() {
+        try {
+          const response = await fetch("/healthz", { cache: "no-store" });
+          if (!response.ok) throw new Error("health check failed");
+          const health = await response.json();
+          $("#modelIcon").textContent = health.model ? "✓" : "!";
+          $("#modelIcon").style.color = health.model ? "var(--green)" : "var(--amber)";
+          $("#modelStatus").textContent = health.model ? "DQN 模型可用。" : "未找到模型文件，请先进入模型训练。";
+        } catch {
+          $("#modelIcon").textContent = "!";
+          $("#modelIcon").style.color = "var(--red)";
+          $("#modelStatus").textContent = "无法读取服务状态。";
+        }
+      }
+
+      $$(".mode-btn").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
+      [$("#restartButton"), $("#restartIcon"), $("#overlayRestart")].forEach((button) => button.addEventListener("click", restartGame));
+      $$(".key-btn").forEach((button) => button.addEventListener("pointerdown", () => sendDirection(button.dataset.dir)));
+      $("#startTrain").addEventListener("click", startTraining);
+      $("#stopTrain").addEventListener("click", stopTraining);
+      $("#fpsRange").addEventListener("input", (event) => {
+        $("#fpsValue").textContent = `${event.target.value} FPS`;
+        if (socket?.readyState === WebSocket.OPEN && mode !== "train") {
+          socket.send(JSON.stringify({ type: "fps", value: event.target.value }));
+        }
+      });
+      bindSegmented("planner", (value) => {
+        planner = value;
+        $("#plannerHint").textContent = plannerHints[planner];
+        if (mode === "play") connectGame();
+      });
+      bindSegmented("level", (value) => {
+        level = value;
+        $("#levelHint").textContent = levelCopy[level][1];
+        if (mode === "duel") connectGame();
+      });
+      $("#insightToggle").addEventListener("change", () => {
+        updateBrainCopy();
+        redraw();
+      });
+      $("#maxStepsInput").addEventListener("change", (event) => {
+        const value = Math.min(1000000, Math.max(1, Number.parseInt(event.target.value, 10) || 500));
+        event.target.value = value;
+        if (mode === "play" || mode === "duel") connectGame();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+        const keyMap = { ArrowUp: "up", w: "up", W: "up", ArrowDown: "down", s: "down", S: "down", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
+        if (keyMap[event.key]) {
+          event.preventDefault();
+          sendDirection(keyMap[event.key]);
+        } else if (event.code === "Space" && mode !== "train") {
+          event.preventDefault();
+          restartGame();
+        }
+      });
+
+      window.addEventListener("resize", () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => mode === "train" ? drawTrainingChart() : redraw(), 80);
+      });
+      window.addEventListener("beforeunload", () => closeSocket());
+
+      $("#plannerHint").textContent = plannerHints[planner];
+      $("#levelHint").textContent = levelCopy[level][1];
+      drawBoard(lastFrame);
+      checkModel();
+      connectGame();
+    })();
+  </script>
+</body>
+</html>

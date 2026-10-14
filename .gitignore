@@ -1,1 +1,13 @@
-.workbuddy/
+# Python-generated files
+__pycache__/
+*.py[oc]
+.coverage
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
