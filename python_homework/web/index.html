@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171b1b">
+  <title>AIMC · 雷达信号分析</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/lucide.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark"><i data-lucide="audio-lines"></i></span><span>AIMC<span class="brand-sub">RADAR SIGNAL LAB</span></span></a>
+    <div class="workspace-label">工作空间 <span>LOCAL</span></div>
+    <nav aria-label="主导航">
+      <button class="nav-item active" data-view="recognize" title="信号识别" aria-label="信号识别"><i data-lucide="scan-line"></i><span>信号识别</span><i class="nav-arrow" data-lucide="chevron-right"></i></button>
+      <button class="nav-item" data-view="evaluation" title="实验评估" aria-label="实验评估"><i data-lucide="chart-no-axes-combined"></i><span>实验评估</span></button>
+      <button class="nav-item" data-view="models" title="模型与数据" aria-label="模型与数据"><i data-lucide="layers-2"></i><span>模型与数据</span></button>
+      <button class="nav-item" data-view="history" title="识别记录" aria-label="识别记录"><i data-lucide="history"></i><span>识别记录</span><span class="nav-count" id="history-count">0</span></button>
+    </nav>
+    <div class="sidebar-experiment"><span class="sidebar-caption">当前实验</span><div><span class="status-dot"></span> STFT-CNN</div><p>脉内调制 · 单标签分类</p><span class="version">AIMC-Spec / v2</span></div>
+    <div class="sidebar-bottom"><div class="local-icon"><i data-lucide="monitor"></i></div><div>本地计算环境<span>CPU · 1 个计算线程</span></div><span class="status-dot"></span></div>
+  </aside>
+  <div class="app-shell">
+    <header class="topbar"><div class="breadcrumb">工作空间 <i data-lucide="chevron-right"></i><span id="breadcrumb">信号识别</span></div><div class="topbar-right"><span class="connection"><span class="status-dot"></span> 本地服务</span><span class="topbar-separator"></span><a href="https://github.com/seb-cocks/AIMC-image-classification" target="_blank" rel="noreferrer" class="source-link" title="上游项目"><i data-lucide="github"></i><span>项目源码</span><i data-lucide="arrow-up-right"></i></a><span class="avatar">R</span></div></header>
+    <main>
+      <div class="page-heading"><div><div class="eyebrow">INTRA-PULSE MODULATION</div><h1 id="page-title">雷达信号识别</h1><p id="page-subtitle">单脉冲分析 / STFT 功率谱 / 调制样式识别</p></div><button class="button secondary" id="export-button"><i data-lucide="download"></i>导出结果</button></div>
+      <div class="metric-strip" id="metric-strip"><div class="metric"><span>当前模型 <i data-lucide="cpu"></i></span><strong>STFT-CNN <small id="class-count">8 CLASSES</small></strong><p id="metric-source">本地合成信号</p></div><div class="metric"><span>独立测试准确率 <i data-lucide="crosshair"></i></span><strong id="accuracy-value">71.00<span>%</span></strong><p id="test-count">800 条测试样本</p></div><div class="metric"><span>Macro-F1 <i data-lucide="chart-no-axes-column"></i></span><strong id="f1-value">0.7058</strong><p>各类别 F1 的宏平均</p></div><div class="metric"><span>输入配置 <i data-lucide="radio"></i></span><strong id="sample-value">1,024 <span>点</span></strong><p id="sample-rate-value">1 MHz 采样率 · 96 × 96 谱图</p></div></div>
+      <section id="view-recognize" class="view active">
+        <div class="workbench-grid">
+          <div class="signal-column">
+            <section class="signal-tool"><div class="section-toolbar"><div class="section-title"><i data-lucide="activity"></i><h2>信号视图</h2><span class="tag" id="signal-tag">样例信号</span></div><div class="icon-group"><button class="icon-button" id="save-spectrum" title="下载时频图" aria-label="下载时频图"><i data-lucide="image-down"></i></button><button class="icon-button" id="expand-spectrum" title="放大时频图" aria-label="放大时频图"><i data-lucide="maximize-2"></i></button></div></div>
+              <div class="signal-tabs"><button class="signal-tab active" data-signal-tab="spectrum">功率时频图</button><button class="signal-tab" data-signal-tab="waveform">IQ 波形</button><span class="chart-format" id="chart-format">FFT 64 / HOP 32</span></div>
+              <div class="chart-body"><div class="chart-y-label" id="y-axis-label">频率 (MHz)</div><div class="chart-y-ticks" id="y-axis-ticks"><span>0.50</span><span>0.25</span><span>0</span><span>−0.25</span><span>−0.50</span></div><div class="chart-display"><img id="spectrum-image" alt="当前 IQ 信号的 STFT 功率时频图"><canvas id="waveform-canvas" hidden></canvas><div class="chart-loading" id="chart-loading"><span class="spinner"></span><span>正在计算信号…</span></div></div><div class="color-scale" id="color-scale"><div></div><span>0</span><span>−20</span><span>−40</span><small>dB</small></div><div class="chart-x-ticks" id="x-axis-ticks"><span>0</span><span>256</span><span>512</span><span>768</span><span>1024</span></div><div class="chart-x-label" id="x-axis-label">采样点</div></div>
+              <div class="signal-footer"><span><span class="status-dot"></span><span id="signal-filename">等待信号</span></span><span id="signal-details">COMPLEX IQ · FLOAT32</span></div>
+            </section>
+            <section class="prediction-section"><div class="section-title result-heading"><i data-lucide="list-filter"></i><h2>识别结果</h2><span class="tag" id="prediction-count">0 条脉冲</span><span class="runtime" id="runtime">—</span></div><div id="prediction-result" class="prediction-empty">等待识别结果</div><div id="batch-results"></div></section>
+          </div>
+          <aside class="control-column"><div class="section-title control-heading"><i data-lucide="sliders-horizontal"></i><h2>识别配置</h2></div><label class="field-label" for="model-select">识别模型</label><div class="select-wrap"><i data-lucide="box"></i><select id="model-select"><option value="synthetic">STFT-CNN · 8 类合成信号</option><option value="official">STFT-CNN · 30 类官方信号</option></select><i data-lucide="chevron-down"></i></div><div class="model-note" id="model-note"><span class="status-dot"></span>权重已加载<span>CPU</span></div>
+            <div class="input-tabs" role="tablist" aria-label="输入来源"><button class="input-tab active" data-input-tab="sample" role="tab" aria-selected="true"><i data-lucide="wand-sparkles"></i>样例信号</button><button class="input-tab" data-input-tab="upload" role="tab" aria-selected="false"><i data-lucide="upload"></i>上传 IQ</button></div>
+            <div id="sample-input"><label class="field-label" for="modulation-select">调制样式</label><div class="select-wrap"><select id="modulation-select"><option value="LFM_UP">LFM_UP · 线性上扫频</option><option value="LFM_DOWN">LFM_DOWN · 线性下扫频</option><option value="CW">CW · 未调制单频</option><option value="NLFM">NLFM · 非线性调频</option><option value="BPSK">BPSK · 二相编码</option><option value="BFSK">BFSK · 二频移键控</option><option value="4FSK">4FSK · 四频移键控</option><option value="SFM">SFM · 正弦调频</option></select><i data-lucide="chevron-down"></i></div><div class="field-row"><label class="field-label" for="snr-slider">信噪比</label><span class="number-label"><output id="snr-output">+6</output> dB</span></div><input id="snr-slider" type="range" min="-6" max="18" step="3" value="6"><div class="range-labels"><span>−6 dB</span><span>+18 dB</span></div><label class="field-label" for="seed-input">随机种子</label><div class="seed-field"><input id="seed-input" type="number" min="0" max="4294967295" value="2026"><button class="icon-button" id="random-seed" title="更换随机种子" aria-label="更换随机种子"><i data-lucide="shuffle"></i></button></div></div>
+            <div id="upload-input" hidden><label class="dropzone" id="dropzone" for="file-input"><i data-lucide="file-up"></i><strong id="upload-name">选择或拖入 IQ 文件</strong><span>NPY / NPZ / CSV</span><small>最多 64 条脉冲 · 8 MB</small><input type="file" id="file-input" accept=".npy,.npz,.csv" hidden></label><label class="field-label" for="sample-rate-input">采样率 (Hz)</label><input class="text-input" id="sample-rate-input" type="number" min="1" value="1000000"></div>
+            <div class="field-row threshold-heading"><label class="field-label" for="confidence-slider">置信度阈值</label><span class="number-label"><output id="confidence-output">0</output>%</span></div><input id="confidence-slider" type="range" min="0" max="100" value="0"><div class="range-labels"><span>0%</span><span>100%</span></div><button class="button primary run-button" id="run-button"><i data-lucide="play"></i><span>生成并识别</span></button><div class="inline-error" id="input-error" role="alert" hidden></div>
+            <div class="pipeline"><span class="field-label">处理流程</span><div><span>IQ</span><i data-lucide="chevron-right"></i><span>STFT</span><i data-lucide="chevron-right"></i><span>CNN</span><i data-lucide="chevron-right"></i><span>分类</span></div><p>单标签 · 交叉熵 · Softmax</p></div><div class="experiment-notice"><i data-lucide="info"></i><p id="experiment-notice">当前结果仅适用于本地合成信号分布。Softmax 分数未经置信度校准。</p></div>
+          </aside>
+        </div>
+      </section>
+      <section id="view-evaluation" class="view"><div class="view-toolbar"><div class="section-title"><i data-lucide="chart-no-axes-combined"></i><h2>实验指标</h2></div><select class="text-input experiment-select" aria-label="评估实验"></select></div><div class="evaluation-grid"><section class="analysis-tool"><h3>训练与验证准确率</h3><div class="chart-legend"><span class="legend-train">训练集</span><span class="legend-val">验证集</span></div><canvas id="history-canvas"></canvas><p class="chart-caption">训练轮次 / 准确率 (%)</p></section><section class="analysis-tool"><h3>不同信噪比表现</h3><div id="snr-bars"></div><p class="chart-caption">独立测试集准确率</p></section></div><div class="view-toolbar"><h2>分类别指标</h2><button class="button secondary" id="confusion-button"><i data-lucide="grid-3x3"></i>混淆矩阵</button></div><div class="table-wrap"><table><thead><tr><th>调制类别</th><th>Precision</th><th>Recall</th><th>F1</th><th>测试样本</th></tr></thead><tbody id="class-metrics"></tbody></table></div><p class="protocol-note" id="protocol-note"></p></section>
+      <section id="view-models" class="view"><div class="view-toolbar"><h2>可用模型</h2><span class="muted">2 个本地权重</span></div><div id="model-list"></div><div class="view-toolbar model-data-heading"><h2>数据与预处理</h2><select class="text-input experiment-select" aria-label="数据实验"></select></div><div class="data-grid" id="data-details"></div></section>
+      <section id="view-history" class="view"><div class="view-toolbar"><h2>最近识别</h2><button class="button secondary" id="clear-history"><i data-lucide="trash-2"></i>清空记录</button></div><div id="history-list"></div></section>
+      <footer class="main-footer"><span><i data-lucide="audio-lines"></i>AIMC · Radar Signal Lab</span><span>STFT-CNN / 本地实验工作台</span></footer>
+    </main>
+  </div>
+  <div id="toast" role="status" hidden></div>
+  <dialog id="image-dialog"><div class="dialog-heading"><h2 id="dialog-title">功率时频图</h2><button class="icon-button" id="close-dialog" title="关闭" aria-label="关闭"><i data-lucide="x"></i></button></div><img id="dialog-image" alt="分析图放大视图"></dialog>
+</body>
+</html>

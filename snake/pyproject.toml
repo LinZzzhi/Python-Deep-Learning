@@ -1,0 +1,23 @@
+[project]
+name = "python-2026"
+version = "0.1.0"
+description = "基于强化学习（DQN）的贪吃蛇游戏"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.116.1",
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.2",
+    "pygame>=2.6.1",
+    "torch>=2.14.0",
+    "uvicorn>=0.35.0",
+    "websockets>=15.0.1",
+]
+
+# PyTorch CPU 版索引（体积更小，无需 CUDA）
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

@@ -1,0 +1,7 @@
+.venv/
+.venv-cuda/
+__pycache__/
+.pytest_cache/
+data/
+outputs/
+*.pyc
