@@ -8,7 +8,9 @@ build/
 dist/
 wheels/
 *.egg-info
+备份/
 
 # Virtual environments
 .venv
 .workbuddy
+.ppt_build/

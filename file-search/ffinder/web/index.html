@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ffind · 文件查找</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔍</text></svg>">
+<style>
+  :root{
+    --bg:#f6f7f5; --panel:#ffffff; --text:#1b1f24; --muted:#6b7280;
+    --accent:#0f766e; --accent-soft:#e6f4f2; --mark:#fff3b0; --mark-text:#1b1f24;
+    --hover:#eef2f1; --active:#e2eceb; --border:#e4e7e4; --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.06);
+    --danger:#b42318; --danger-soft:#fdecea; --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1214; --panel:#161b1f; --text:#e6e9ec; --muted:#96a0aa;
+      --accent:#2dd4bf; --accent-soft:#12312e; --mark:#7c5d0e; --mark-text:#ffe9a8;
+      --hover:#1d2429; --active:#232c32; --border:#252d33; --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+      --danger:#f97066; --danger-soft:#3a1c1a;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+    padding:env(safe-area-inset-top,0) 16px env(safe-area-inset-bottom,0);
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:28px 0 80px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .brand{font-weight:700;font-size:18px;display:flex;align-items:baseline;gap:8px}
+  .brand .sub{font-weight:400;font-size:12px;color:var(--muted)}
+  .spacer{flex:1}
+  .chip{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--border);
+    padding:5px 10px;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+  .chip.err{color:var(--danger);border-color:var(--danger)}
+  button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--panel);color:var(--text);
+    border-radius:9px;padding:7px 13px;transition:background .12s,border-color .12s}
+  button:hover{background:var(--hover)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.primary:hover{filter:brightness(1.06)}
+  button.danger{color:var(--danger)}
+  button.danger:hover:not(:disabled){background:var(--danger-soft);border-color:var(--danger)}
+  button:disabled{opacity:.5;cursor:default}
+
+  .searchbar{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:12px;display:flex;flex-direction:column;gap:10px;position:sticky;top:12px;z-index:5}
+  .row1{display:flex;gap:10px;align-items:center}
+  #q{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--border);
+    border-radius:9px;background:var(--bg);color:var(--text);outline:none}
+  #q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .seg{display:flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;flex-shrink:0}
+  .seg button{border:0;border-radius:0;padding:8px 12px;background:transparent;color:var(--muted)}
+  .seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .row2{display:flex;gap:10px;align-items:center}
+  #scope{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:7px 10px;border:1px solid var(--border);
+    border-radius:8px;background:var(--bg);color:var(--muted)}
+  #scope:focus{color:var(--text);border-color:var(--accent)}
+
+  .meta{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 6px;font-size:12px;color:var(--muted);min-height:18px}
+  ul#results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+  li.row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:9px;cursor:pointer;
+    border:1px solid transparent}
+  li.row:hover{background:var(--hover)}
+  li.row.active{background:var(--active);border-color:var(--accent)}
+  li.row .ic{width:18px;text-align:center;flex-shrink:0;opacity:.8}
+  li.row .body{flex:1;min-width:0}
+  li.row .nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  li.row mark{background:var(--mark);color:var(--mark-text);border-radius:3px;padding:0 1px}
+  li.row .pth{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    direction:rtl;text-align:left}
+  li.row .right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  li.row .sz{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  li.row .cp{opacity:0;border:0;background:transparent;color:var(--muted);padding:4px 6px;font-size:12px}
+  li.row:hover .cp,li.row.active .cp{opacity:1}
+  li.row .cp:hover{color:var(--accent);background:transparent}
+  .badge{font-size:10px;background:var(--accent-soft);color:var(--accent);border-radius:5px;padding:1px 5px;margin-left:6px;font-weight:600}
+
+  #hint{margin-top:40px;text-align:center;color:var(--muted);font-size:13px;line-height:2}
+  #hint .ex{display:inline-block;margin:3px}
+  #hint .ex button{font-size:12px;padding:4px 10px;border-radius:999px}
+  kbd{background:var(--panel);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+  /* 重建面板 */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-start;justify-content:center;
+    padding:8vh 16px;z-index:20}
+  .scrim.on{display:flex}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);
+    width:100%;max-width:520px;padding:20px}
+  .panel h3{margin:0 0 4px;font-size:16px}
+  .panel .desc{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+  .panel label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+  .panel textarea,.panel input[type=text]{width:100%;font:inherit;font-size:13px;padding:9px 11px;
+    border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;resize:vertical}
+  .panel textarea:focus,.panel input:focus{border-color:var(--accent)}
+  .panel .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .prog{margin-top:14px;font-size:12.5px;color:var(--accent);display:none;font-variant-numeric:tabular-nums}
+  .prog.on{display:block}
+  .prog.err{color:var(--danger)}
+  .foot{margin-top:26px;text-align:center;font-size:11.5px;color:var(--muted)}
+  @media (max-width:560px){
+    .row1{flex-wrap:wrap} #q{flex-basis:100%} .seg{flex:1}
+    .chip{max-width:40vw}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">🔍 ffind<span class="sub">快文件查找</span></div>
+    <div class="spacer"></div>
+    <div class="chip" id="chip">加载中…</div>
+    <button id="btn-rebuild" title="重建索引">重建索引</button>
+    <button id="btn-del" class="danger" title="删除索引文件(不会删除任何真实文件)" disabled>删除索引</button>
+  </header>
+
+  <div class="searchbar">
+    <div class="row1">
+      <input id="q" placeholder="输入关键词…空格分隔表示同时包含,如 report pdf" autocomplete="off" spellcheck="false" autofocus>
+      <div class="seg" id="seg">
+        <button data-t="any" class="on">全部</button>
+        <button data-t="file">文件</button>
+        <button data-t="dir">目录</button>
+      </div>
+    </div>
+    <div class="row2">
+      <input id="scope" placeholder="限定路径(可选),如 /home/time/code —— 回车搜索">
+    </div>
+  </div>
+
+  <div class="meta" id="meta"></div>
+  <ul id="results"></ul>
+  <div id="hint"></div>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="panel">
+    <h3>重建索引</h3>
+    <p class="desc">并行扫描下列目录并全量重建。每 10 万条目约 0.2–0.5 秒,期间搜索仍用旧索引,完成后原子替换。</p>
+    <label>搜索根目录(每行一个)</label>
+    <textarea id="roots" rows="4" spellcheck="false"></textarea>
+    <label>追加排除的目录名(逗号/空格分隔,可选)</label>
+    <input type="text" id="excl" placeholder="如 build,dist,tmp">
+    <div class="prog" id="prog"></div>
+    <div class="acts">
+      <button id="rb-cancel">取消</button>
+      <button id="rb-go" class="primary">开始重建</button>
+    </div>
+  </div>
+</div>
+
+<div class="foot">ffind · 仅监听 127.0.0.1 · 纯标准库</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s);
+  const q=$("#q"), scope=$("#scope"), ul=$("#results"), meta=$("#meta"), hint=$("#hint"),
+        chip=$("#chip"), seg=$("#seg"), btnDel=$("#btn-del");
+  let rows=[], active=-1, curType="any", ctrl=null, debounce=null, polling=null, lastStatus=null;
+
+  // ---------- 工具 ----------
+  const esc=s=>s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const escRx=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  function fmtN(n){return (n==null?"—":Number(n).toLocaleString("en-US"));}
+  function fmtSize(b){
+    if(b==null)return"";
+    const u=["B","K","M","G","T"];let i=0,n=b;
+    while(n>=1024&&i<u.length-1){n/=1024;i++;}
+    return (i===0?n.toFixed(0):n.toFixed(n<10?1:0))+u[i];
+  }
+  function fmtDate(ts){
+    if(ts==null)return"";
+    const d=new Date(ts*1000),p=x=>String(x).padStart(2,"0");
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+  }
+  function ago(ts){
+    if(!ts)return"";
+    const s=Math.max(0,Date.now()/1000-ts);
+    if(s<90)return"刚刚";
+    if(s<5400)return Math.round(s/60)+" 分钟前";
+    if(s<172800)return (s/3600).toFixed(1)+" 小时前";
+    return (s/86400).toFixed(1)+" 天前";
+  }
+  async function api(path,opts){
+    const r=await fetch(path,opts);
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||("HTTP "+r.status));
+    return d;
+  }
+
+  // ---------- 状态条 ----------
+  function chipText(d){
+    lastStatus=d;
+    if(d.rebuild&&d.rebuild.running)
+      return "重建中 · "+fmtN(d.rebuild.files)+" 文件";
+    if(!d.built_at)return "未建索引 · 点『重建索引』";
+    return fmtN(d.files)+" 文件 · "+fmtN(d.dirs)+" 目录 · "+ago(d.built_at)+" · "+fmtSize(d.size);
+  }
+  function setChip(d,err){
+    chip.textContent=err?("⚠ "+err):chipText(d);
+    chip.classList.toggle("err",!!err);
+    // 无索引或正在重建时可删性不同:重建期间后端会拒绝
+    btnDel.disabled=!d||!d.built_at||!!(d.rebuild&&d.rebuild.running);
+  }
+  async function refreshStatus(){
+    try{const d=await api("/api/status");setChip(d);clearResults();return d;}
+    catch(e){setChip(null,e.message);return null;}
+  }
+
+  // ---------- 高亮 ----------
+  function highlight(text,terms){
+    if(!terms.length)return document.createTextNode(text);
+    const frag=document.createDocumentFragment();
+    const rx=new RegExp("("+terms.map(escRx).join("|")+")","ig");
+    let last=0,m;
+    while((m=rx.exec(text))!==null){
+      if(m.index>last)frag.append(document.createTextNode(text.slice(last,m.index)));
+      const mk=document.createElement("mark");mk.textContent=m[0];frag.append(mk);
+      last=m.index+m[0].length;
+      if(m[0].length===0)rx.lastIndex++;
+    }
+    frag.append(document.createTextNode(text.slice(last)));
+    return frag;
+  }
+
+  // ---------- 搜索 ----------
+  function clearResults(){
+    rows=[];active=-1;ul.textContent="";meta.textContent="";
+    hint.innerHTML=lastStatus&&!lastStatus.built_at
+      ? '尚无索引。点右上角 <b>重建索引</b> 建立(家目录约每 10 万条目 0.3 秒),之后即可毫秒搜索。'
+      : '输入关键词开始搜索。<div class="ex">'+
+        ["py","pdf","report","test","config"].map(w=>'<button data-ex="'+w+'">'+w+"</button>").join("")+
+        '</div><div style="margin-top:14px"><kbd>/</kbd> 聚焦 &nbsp; <kbd>↑</kbd><kbd>↓</kbd> 选择 &nbsp; 双击 / <kbd>Enter</kbd> 打开目录</div>';
+    hint.style.display="block";
+    hint.querySelectorAll("[data-ex]").forEach(b=>b.onclick=()=>{q.value=b.dataset.ex;run();});
+  }
+
+  async function run(){
+    const v=q.value.trim();
+    if(ctrl){ctrl.abort();ctrl=null;}
+    if(!v){clearResults();return;}
+    hint.style.display="none";
+    ctrl=new AbortController();
+    const p=new URLSearchParams({q:v,type:curType,n:"300"});
+    const sc=scope.value.trim(); if(sc)p.set("from",sc);
+    try{
+      const d=await api("/api/search?"+p.toString(),{signal:ctrl.signal});
+      render(d,v.split(/\s+/).filter(Boolean));
+    }catch(e){
+      if(e.name==="AbortError")return;
+      meta.textContent="";
+      hint.style.display="block";
+      hint.innerHTML='<span style="color:var(--danger)">查询出错:'+esc(e.message)+"</span>";
+    }
+  }
+
+  function render(d,terms){
+    rows=d.hits||[];active=-1;
+    ul.textContent="";
+    let m="";
+    if(d.total!=null){
+      m=(d.capped?">":"")+fmtN(d.total)+" 条命中";
+      if(rows.length<d.total)m+=" · 显示前 "+rows.length;
+      m+=" · "+d.ms+" ms";
+    }
+    meta.textContent=rows.length?m:(d.total===0?"无匹配":"");
+    rows.forEach((h,i)=>{
+      const li=document.createElement("li");
+      li.className="row";li.dataset.i=i;
+      const ic=document.createElement("span");ic.className="ic";
+      ic.textContent=h.dir?"📁":iconFor(h.name);
+      const body=document.createElement("div");body.className="body";
+      const nm=document.createElement("div");nm.className="nm";
+      nm.append(highlight(h.name,terms));
+      if(h.dir){const b=document.createElement("span");b.className="badge";b.textContent="目录";nm.append(b);}
+      const pth=document.createElement("div");pth.className="pth";
+      pth.textContent=parentOf(h.path);
+      body.append(nm,pth);
+      const right=document.createElement("div");right.className="right";
+      if(!h.dir&&h.size!=null){const sz=document.createElement("span");sz.className="sz";
+        sz.textContent=fmtSize(h.size)+" · "+fmtDate(h.mtime);right.append(sz);}
+      const cp=document.createElement("button");cp.className="cp";cp.title="复制路径";cp.textContent="⧉";
+      cp.onclick=ev=>{ev.stopPropagation();copy(h.path,cp);};
+      right.append(cp);
+      li.append(ic,body,right);
+      li.title=h.dir?"双击打开此文件夹":"双击打开文件所在目录";
+      li.onclick=()=>setActive(i);
+      li.ondblclick=ev=>{
+        if(ev.target.closest("button"))return;
+        ev.preventDefault();openRow(i);
+      };
+      ul.append(li);
+    });
+    if(rows.length)setActive(0);
+  }
+
+  function iconFor(name){
+    const e=(name.split(".").pop()||"").toLowerCase();
+    if(["py","js","ts","c","cc","cpp","h","go","rs","java","sh","rb"].includes(e))return"📄";
+    if(["md","txt","rst","pdf","doc","docx"].includes(e))return"📃";
+    if(["png","jpg","jpeg","gif","svg","webp","ico"].includes(e))return"🖼";
+    if(["json","yaml","yml","toml","xml","ini","conf"].includes(e))return"⚙";
+    if(["zip","tar","gz","7z","rar"].includes(e))return"🗜";
+    return"📄";
+  }
+  function parentOf(p){
+    const i=Math.max(p.lastIndexOf("/"),p.lastIndexOf("\\"));
+    if(i<0)return p;
+    return p.slice(0,i===0||(i===2&&/^[a-z]:/i.test(p))?i+1:i);
+  }
+
+  function setActive(i){
+    if(!rows.length)return;
+    active=(i+rows.length)%rows.length;
+    ul.querySelectorAll("li.row").forEach((el,k)=>el.classList.toggle("active",k===active));
+    const el=ul.children[active];if(el)el.scrollIntoView({block:"nearest"});
+  }
+  function openRow(i){
+    if(i<0||i>=rows.length)return;
+    const h=rows[i];
+    api("/api/open",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({path:h.path})}).then(d=>{
+        if(!d.ok)throw Error(d.msg||"无法打开目录");
+        flash(h.dir?"已打开文件夹":"已打开文件所在目录");
+      }).catch(e=>{flash(e.message);});
+  }
+  function copy(text,btn){
+    navigator.clipboard.writeText(text).then(()=>{
+      const old=btn.textContent;btn.textContent="✓";setTimeout(()=>btn.textContent=old,900);
+    }).catch(()=>flash("复制失败"));
+  }
+  function flash(msg){meta.textContent=msg;}
+
+  // ---------- 删除索引 ----------
+  btnDel.onclick=async()=>{
+    const st=lastStatus||{};
+    if(!st.built_at)return;
+    const msg="删除索引文件?\n\n"
+      +"收录 "+fmtN(st.files)+" 文件 / "+fmtN(st.dirs)+" 目录 ("+fmtSize(st.size)+")\n"
+      +st.path+"\n\n"
+      +"只删索引本身,不动任何真实文件。搜索根目录设置会保留,之后可随时重建。";
+    if(!confirm(msg))return;
+    btnDel.disabled=true;
+    try{
+      const d=await api("/api/delete",{method:"POST"});
+      q.value="";
+      await refreshStatus();
+      flash("索引已删除,释放 "+fmtSize(d.freed));
+    }catch(e){
+      flash("删除失败:"+e.message);
+      btnDel.disabled=false;
+    }
+  };
+
+  // ---------- 重建面板 ----------
+  const scrim=$("#scrim"),rootsTa=$("#roots"),exclIn=$("#excl"),prog=$("#prog"),goBtn=$("#rb-go");
+  function openPanel(){
+    const rs=(lastStatus&&lastStatus.roots)||[];
+    rootsTa.value=rs.join("\n")||"";
+    prog.className="prog";prog.textContent="";
+    goBtn.disabled=!!(lastStatus&&lastStatus.rebuild&&lastStatus.rebuild.running);
+    scrim.classList.add("on");rootsTa.focus();
+  }
+  function closePanel(){scrim.classList.remove("on");}
+  $("#btn-rebuild").onclick=openPanel;
+  $("#rb-cancel").onclick=closePanel;
+  scrim.onclick=e=>{if(e.target===scrim)closePanel();};
+  goBtn.onclick=async()=>{
+    const rs=rootsTa.value.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    const ex=exclIn.value.split(/[\s,]+/).filter(Boolean);
+    goBtn.disabled=true;
+    try{
+      await api("/api/update",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({roots:rs.length?rs:undefined,exclude_add:ex})});
+      prog.className="prog on";prog.textContent="开始扫描…";
+      startPoll();
+    }catch(e){prog.className="prog on err";prog.textContent="⚠ "+e.message;goBtn.disabled=false;}
+  };
+  function startPoll(){
+    if(polling)return;
+    polling=setInterval(async()=>{
+      let d;try{d=await api("/api/status");}catch(e){return;}
+      setChip(d);
+      const rb=d.rebuild||{};
+      if(rb.running){
+        prog.className="prog on";
+        prog.textContent="已收录 "+fmtN(rb.files)+" 文件 / "+fmtN(rb.dirs)+" 目录 · "+(rb.seconds||0).toFixed(1)+"s";
+        goBtn.disabled=true;
+      }else{
+        clearInterval(polling);polling=null;
+        if(rb.error){prog.className="prog on err";prog.textContent="⚠ 重建失败:"+rb.error;goBtn.disabled=false;}
+        else{prog.className="prog";closePanel();if(q.value.trim())run();}
+      }
+    },350);
+  }
+
+  // ---------- 事件 ----------
+  q.addEventListener("input",()=>{clearTimeout(debounce);debounce=setTimeout(run,110);});
+  scope.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();q.focus();run();}});
+  seg.addEventListener("click",e=>{
+    const b=e.target.closest("button[data-t]");if(!b)return;
+    seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+    curType=b.dataset.t;if(q.value.trim())run();
+  });
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){if(scrim.classList.contains("on")){closePanel();return;}
+      if(document.activeElement===q){q.value="";clearResults();}return;}
+    if(scrim.classList.contains("on"))return;
+    if(e.key==="/"&&document.activeElement!==q&&document.activeElement!==scope){
+      e.preventDefault();q.focus();q.select();return;}
+    if(e.key==="ArrowDown"){e.preventDefault();setActive(active+1);}
+    else if(e.key==="ArrowUp"){e.preventDefault();setActive(active-1);}
+    else if(e.key==="Enter"&&(document.activeElement===q||document.activeElement===document.body)){
+      if(rows.length){e.preventDefault();openRow(active<0?0:active);}
+    }
+  });
+
+  // ---------- 启动 ----------
+  (async function boot(){
+    const d=await refreshStatus();
+    if(d&&d.rebuild&&d.rebuild.running){openPanel();startPoll();}
+  })();
+})();
+</script>
+</body>
+</html>
